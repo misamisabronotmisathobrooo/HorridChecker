@@ -10,7 +10,7 @@ API = "https://discord.com/api/v9/unique-username/username-attempt-unauthed"
 WEBHOOK = "https://discord.com/api/webhooks/1508590349713408231/CIljNz9hoywwrkH9ZJ7cjWVwUi5gogPNdGlWXzYucncqQb13qZZpB6D-Vi6wCSaeZ4WT"
 
 # safer settings
-THREADS = 5
+THREADS = 2
 COOLDOWN_MIN = 7
 COOLDOWN_MAX = 16
 MAX_RETRIES = 5
