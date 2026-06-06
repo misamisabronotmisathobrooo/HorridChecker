@@ -1,13 +1,19 @@
 name: Discord Username Checker
 
 on:
-  workflow_dispatch:   # Allow manual trigger
-  schedule:
-    - cron: '*/2 * * * *'   # Adjust as needed
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '*/20 * * * *'   # optional
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    
+    # ←←← ADD THESE PERMISSIONS ←←←
+    permissions:
+      actions: write      # Required to trigger workflows
+      contents: read      # Needed to checkout repo
+
     steps:
       - uses: actions/checkout@v4
 
@@ -23,5 +29,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_WORKFLOW: checker.yml     # Must match your workflow filename
+          GITHUB_WORKFLOW: checker.yml
         run: python stat.py
