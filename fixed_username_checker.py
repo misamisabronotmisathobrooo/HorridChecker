@@ -1,87 +1,58 @@
 import requests
-import threading
-import time
 import sys
-import random
 import os
 from queue import Queue
 
 API = "https://discord.com/api/v9/unique-username/username-attempt-unauthed"
 WEBHOOK = "https://discord.com/api/webhooks/1508590349713408231/CIljNz9hoywwrkH9ZJ7cjWVwUi5gogPNdGlWXzYucncqQb13qZZpB6D-Vi6wCSaeZ4WT"
 
-# GitHub Settings
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
-GITHUB_WORKFLOW = os.getenv("GITHUB_WORKFLOW")   # Must match your .yml filename exactly
-
-THREADS = 1
-COOLDOWN_MIN = 7
-COOLDOWN_MAX = 16
-
-request_lock = threading.Lock()
-checked_lock = threading.Lock()
-checked = set()
-names_queue = Queue()
+GITHUB_WORKFLOW = os.getenv("GITHUB_WORKFLOW")
 
 session = requests.Session()
 session.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Content-Type": "application/json"
 })
 
 def log(msg):
     print(msg, flush=True)
-    sys.stdout.flush()
 
 def trigger_new_workflow_run():
-    if not all([GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_WORKFLOW]):
-        log("[GITHUB] Missing environment variables")
-        return False
+    if not GITHUB_WORKFLOW:
+        log(f"[GITHUB] GITHUB_WORKFLOW env var is empty!")
+        return
+
+    log(f"[GITHUB] Triggering workflow file: '{GITHUB_WORKFLOW}'")
 
     owner, repo = GITHUB_REPOSITORY.split("/")
     url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/{GITHUB_WORKFLOW}/dispatches"
 
     headers = {
-        "Accept": "application/vnd.github.v3+json",
         "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
         "X-GitHub-Api-Version": "2022-11-28"
     }
 
-    payload = {"ref": "main"}   # ← Change to "master" if your default branch is master
-
     try:
-        r = requests.post(url, json=payload, headers=headers, timeout=10)
+        r = requests.post(url, json={"ref": "main"}, headers=headers, timeout=10)
         if r.status_code in (200, 204):
             log("[GITHUB] ✅ Successfully triggered new workflow run!")
-            return True
         else:
-            log(f"[GITHUB] Trigger failed: {r.status_code} - {r.text}")
-            log(f"[DEBUG] Tried to call workflow: {GITHUB_WORKFLOW}")
-            return False
+            log(f"[GITHUB] Failed {r.status_code}: {r.text}")
     except Exception as e:
         log(f"[GITHUB] Error: {e}")
-        return False
 
-log("[INIT] Username checker started")
+log("[INIT] Starting checker...")
 
 # Load names
+names_queue = Queue()
 with open("names.txt", "r", encoding="utf-8") as f:
     for line in f:
         name = line.strip()
         if name:
             names_queue.put(name)
-
-def send_webhook(name):
-    if not WEBHOOK:
-        return
-    try:
-        session.post(WEBHOOK, json={
-            "content": f"available: `{name}` @everyone",
-            "allowed_mentions": {"parse": ["everyone"]}
-        }, timeout=10)
-        log(f"[WEBHOOK] Sent hit for {name}")
-    except Exception as e:
-        log(f"[WEBHOOK ERROR] {e}")
 
 def check(name):
     try:
@@ -95,43 +66,23 @@ def check(name):
                 log(f"[OPEN] {name}")
                 with open("hits.txt", "a", encoding="utf-8") as f:
                     f.write(name + "\n")
-                log(f"[SAVED] {name} -> hits.txt")
-                send_webhook(name)
-            else:
-                log(f"[TAKEN] {name}")
-            return
+                log(f"[SAVED] {name}")
 
         elif r.status_code == 429:
-            log("[RATE LIMITED] → Triggering new workflow run...")
+            log("[RATE LIMITED] → Triggering new run now...")
             trigger_new_workflow_run()
-            log("[EXIT] Exiting current run so new one can start.")
+            log("[EXIT] Exiting so new run can start.")
             sys.exit(0)
 
         else:
-            log(f"[ERROR] {name} -> HTTP {r.status_code}")
+            log(f"[ERROR] HTTP {r.status_code}")
 
     except Exception as e:
-        log(f"[REQUEST ERROR] {name} -> {e}")
+        log(f"[ERROR] {e}")
 
-def worker():
-    while not names_queue.empty():
-        name = names_queue.get()
-        if name in checked:
-            names_queue.task_done()
-            continue
-        with checked_lock:
-            checked.add(name)
+# Run
+while not names_queue.empty():
+    name = names_queue.get()
+    check(name)
 
-        check(name)
-        names_queue.task_done()
-        log(f"[TOTAL CHECKED] {len(checked)}")
-
-# Start
-log(f"[START] Launching {THREADS} thread(s)")
-threads = [threading.Thread(target=worker, daemon=True) for _ in range(THREADS)]
-for t in threads:
-    t.start()
-for t in threads:
-    t.join()
-
-log("[DONE] Run finished")
+log("[DONE]")
