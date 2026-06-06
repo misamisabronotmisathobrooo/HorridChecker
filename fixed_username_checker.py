@@ -10,11 +10,11 @@ WEBHOOK = "https://discord.com/api/webhooks/1508590349713408231/CIljNz9hoywwrkH9
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
-GITHUB_WORKFLOW = "checker.yml"   # Hardcoded - do not change unless filename changes
+GITHUB_WORKFLOW = "checker.yml"
 
 # Random username settings
 USERNAME_LENGTH = 4
-NUM_USERNAMES = 10000   # How many to generate per run (adjust as needed)
+NUM_USERNAMES = 10000
 
 session = requests.Session()
 session.headers.update({
@@ -24,6 +24,23 @@ session.headers.update({
 
 def log(msg):
     print(msg, flush=True)
+
+def send_webhook(name):
+    """Send available username to Discord webhook"""
+    if not WEBHOOK:
+        return
+    try:
+        payload = {
+            "content": f"✅ **Available Username Found!**\n`{name}`\n@everyone",
+            "allowed_mentions": {"parse": ["everyone"]}
+        }
+        response = session.post(WEBHOOK, json=payload, timeout=10)
+        if response.status_code in (200, 204):
+            log(f"[WEBHOOK] ✅ Sent hit: {name}")
+        else:
+            log(f"[WEBHOOK] Failed: {response.status_code}")
+    except Exception as e:
+        log(f"[WEBHOOK ERROR] {e}")
 
 def trigger_new_workflow_run():
     if not all([GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_WORKFLOW]):
@@ -55,16 +72,15 @@ def trigger_new_workflow_run():
 
 log("[INIT] Random 4-char username checker started")
 
-# Character set: letters + digits + underscore + period
+# Character set: lowercase letters + digits + underscore + period
 chars = string.ascii_lowercase + string.digits + "_."
 
-# Generate random usernames
 names_queue = Queue()
 for _ in range(NUM_USERNAMES):
     username = ''.join(random.choice(chars) for _ in range(USERNAME_LENGTH))
     names_queue.put(username)
 
-log(f"[GENERATED] {NUM_USERNAMES} random 4-character usernames")
+log(f"[GENERATED] {NUM_USERNAMES} random usernames")
 
 def check(name):
     try:
@@ -75,22 +91,27 @@ def check(name):
         if r.status_code == 200:
             data = r.json()
             if not data.get("taken", True):
-                log(f"[OPEN] {name}")
+                log(f"[OPEN] {name} → Sending to webhook")
+                send_webhook(name)
+                # Optional: still save to file
                 with open("hits.txt", "a", encoding="utf-8") as f:
                     f.write(name + "\n")
-                log(f"[SAVED] {name}")
+            else:
+                log(f"[TAKEN] {name}")
+
         elif r.status_code == 429:
             log("[RATE LIMITED] → Triggering new workflow run immediately...")
             trigger_new_workflow_run()
             log("[EXIT] Exiting current run.")
             sys.exit(0)
+
         else:
             log(f"[ERROR] HTTP {r.status_code}")
 
     except Exception as e:
         log(f"[ERROR] {e}")
 
-# Run the checker
+# Run checker
 while not names_queue.empty():
     name = names_queue.get()
     check(name)
