@@ -79,7 +79,7 @@ def trigger_new_workflow_run():
     return False
 
 log("[INIT] Fixed username checker started")
-log(f"[TARGETS] Monitoring {len(TARGET_USERNAMES)} username(s): {TARGET_USERNAMES}")
+log(f"[TARGETS] Monitoring {len(name)} username(s): {name}")
 
 def check(name):
     try:
