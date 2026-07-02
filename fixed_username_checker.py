@@ -25,7 +25,6 @@ def log(msg):
     print(msg, flush=True)
 
 def send_webhook(name):
-    """Send available username to Discord webhook"""
     if not WEBHOOK:
         return
     try:
@@ -65,17 +64,32 @@ def trigger_new_workflow_run():
         log(f"[GITHUB] Error: {e}")
         return False
 
-log("[INIT] Random 4-char username checker started")
+log("[INIT] Random 4-char username checker started (with guaranteed . or _)")
 
-# Character set: lowercase letters + digits + underscore + period
-chars = string.ascii_lowercase + string.digits + "_."
+# Character sets
+letters_digits = string.ascii_lowercase + string.digits
+special = "_."
 
 names_queue = Queue()
+
 for _ in range(NUM_USERNAMES):
-    username = ''.join(random.choice(chars) for _ in range(USERNAME_LENGTH))
+    # Create base username with letters/digits
+    username_list = [random.choice(letters_digits) for _ in range(USERNAME_LENGTH)]
+    
+    # Force at least one special character
+    pos = random.randint(0, USERNAME_LENGTH - 1)
+    username_list[pos] = random.choice(special)
+    
+    # Optionally add more specials for variety (25% chance)
+    if random.random() < 0.25:
+        pos2 = random.randint(0, USERNAME_LENGTH - 1)
+        if pos2 != pos:
+            username_list[pos2] = random.choice(special)
+    
+    username = ''.join(username_list)
     names_queue.put(username)
 
-log(f"[GENERATED] {NUM_USERNAMES} random usernames")
+log(f"[GENERATED] {NUM_USERNAMES} usernames — every one has at least one . or _")
 
 def check(name):
     try:
