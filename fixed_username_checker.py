@@ -64,39 +64,46 @@ def trigger_new_workflow_run():
         log(f"[GITHUB] Error: {e}")
         return False
 
-log("[INIT] Random 4-char username checker started (with guaranteed . or _)")
+log("[INIT] Random 4-char username checker started (with guaranteed . or _ , no '..')")
 
 # Character sets
-letters_digits = string.digits + string.ascii_lowercase 
+letters_digits = string.digits + string.ascii_lowercase
 special = "_."
 
 names_queue = Queue()
 
-for _ in range(NUM_USERNAMES):
+generated_count = 0
+while generated_count < NUM_USERNAMES:
     # Create base username with letters/digits
     username_list = [random.choice(letters_digits) for _ in range(USERNAME_LENGTH)]
-    
+   
     # Force at least one special character
     pos = random.randint(0, USERNAME_LENGTH - 1)
     username_list[pos] = random.choice(special)
-    
+   
     # Optionally add more specials for variety (25% chance)
     if random.random() < 0.25:
         pos2 = random.randint(0, USERNAME_LENGTH - 1)
         if pos2 != pos:
             username_list[pos2] = random.choice(special)
-    
+   
     username = ''.join(username_list)
+    
+    # Prevent names with ".."
+    if ".." in username:
+        continue  # Regenerate
+    
     names_queue.put(username)
+    generated_count += 1
 
-log(f"[GENERATED] {NUM_USERNAMES} usernames — every one has at least one . or _")
+log(f"[GENERATED] {NUM_USERNAMES} usernames — every one has at least one . or _ and no '..'")
 
 def check(name):
     try:
         log(f"[CHECKING] {name}")
         r = session.post(API, json={"username": name}, timeout=15)
         log(f"[RESPONSE] {name} -> {r.status_code}")
-        
+       
         if r.status_code == 200:
             data = r.json()
             if not data.get("taken", True):
