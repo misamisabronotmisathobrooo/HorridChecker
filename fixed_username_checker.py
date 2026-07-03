@@ -6,7 +6,7 @@ import string
 from queue import Queue
 
 API = "https://discord.com/api/v9/unique-username/username-attempt-unauthed"
-WEBHOOK = "https://discord.com/api/webhooks/1519504577173651466/6yYRuvHpdlP4-MxFMxWwyNhPA1j6RgUnlYox21o5PECB-_95S4EU2_OqYHPYv_tWKXfP"
+WEBHOOK = "https://discord.com/api/webhooks/1522306397755412760/vIjEAUWo7kPCayqe7K7LfV-FaNXnbWxB_trSRDi4Ewh97wJmAquTeDw5igJCs3t5O_ui"
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY")
 GITHUB_WORKFLOW = "checker.yml"
