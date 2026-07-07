@@ -67,7 +67,7 @@ def trigger_new_workflow_run():
 log("[INIT] Random 4-char username checker started (with guaranteed . or _ , no '..')")
 
 # Character sets
-letters_digits = string.digits + string.ascii_lowercase
+letters_digits = string.ascii_lowercase
 special = "_."
 
 names_queue = Queue()
